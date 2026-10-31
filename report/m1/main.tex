@@ -1,0 +1,261 @@
+\documentclass[11pt]{article}
+
+% ============================================================
+% Milestone 1 -- Project Proposal & Literature Review
+% DIP Team Project (CSE681)
+% ============================================================
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[round]{natbib}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, citecolor=blue!50!black, urlcolor=blue!50!black}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{array}
+
+\title{\LARGE Project Proposal \& Literature Review \\[4pt]
+\large Diagnostic-Preserving Denoising for Low-Dose Medical Images}
+\author{
+  Omar Hesham Hanafy Mohamed Nasr (2401812) \and
+  Mohamed Ahmed Abdelsalaam (2400033)
+}
+\date{Milestone 1 --- October 2026 \\{} CSE681 --- Digital Image Processing}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Low-dose X-ray and computed tomography (CT) protocols mitigate cumulative radiation risks for patients but introduce heavy Poisson-Gaussian quantum and electronic noise that degrades fine anatomical structures. Traditional image denoisers are assessed primarily by pixel-level distortion metrics (PSNR, SSIM) that treat all spatial regions uniformly and can reward oversmoothing that erases subtle diagnostic indicators. We propose a lightweight residual U-Net architecture trained to restore radiographs corrupted by calibrated synthetic low-dose noise, evaluated simultaneously on pixel fidelity and on a task-specific \emph{diagnostic-preservation} metric: the consistency of pathology predictions from a frozen, pretrained chest X-ray classifier. Benchmarks are established against classical collaborative filtering (BM3D with Anscombe variance stabilization) and median filtering on a 3{,}000-image patient-disjoint subset of NIH ChestX-ray14. Because paired public low- and high-dose clinical radiographs are scarce, the noise is synthesized, a limitation we address through multi-level noise calibration and explicit boundary-preserving design.
+\end{abstract}
+
+\section{Problem Statement \& Motivation}
+\label{sec:motivation}
+Medical radiography operates under the ALARA (As Low As Reasonably Achievable) principle to limit ionizing radiation exposure. However, reducing photon flux causes severe image degradation dominated by signal-dependent quantum mottle (Poisson noise) compounded by detector read and thermal noise (additive Gaussian noise). While computational denoising is vital for rendering low-dose acquisitions clinically interpretable, conventional algorithms are almost universally optimized and evaluated with Peak Signal-to-Noise Ratio (PSNR) and Structural Similarity (SSIM). These objective metrics compute unweighted spatial averages across pixels; consequently, a denoiser can achieve high PSNR by aggressively smoothing high-frequency components, while inadvertently eradicating subtle pathology indicators such as faint pulmonary nodules, hairline pneumothoraces, or ground-glass opacities. 
+
+To overcome this misalignment between pixel-level fidelity and clinical utility, this project addresses the question: \emph{Does a restored medical image preserve the diagnostic inferences that a clinical classifier would draw from the original pristine image?} This investigation connects directly to fundamental topics in the CSE681 curriculum, specifically:
+\begin{enumerate}[leftmargin=*,noitemsep]
+  \item \textbf{Image Degradation and Noise Modeling (Week 4):} Mathematical formulation of Poisson photon emission statistics and additive Gaussian electronic noise.
+  \item \textbf{Spatial and Transform-Domain Restoration (Week 4 \& 5):} Non-linear spatial filtering (median filters), transform-domain collaborative grouping and shrinkage (BM3D), and deep residual mapping.
+  \item \textbf{Objective Image Quality Assessment (Week 5):} Mathematical limits of error-visibility metrics (MSE, PSNR) and structural indices (SSIM), extending them to downstream task-based diagnostic consistency.
+\end{enumerate}
+
+\section{Related Work}
+\label{sec:related}
+Image denoising in medical imaging has progressed from non-local transform shrinkage to deep convolutional and generative models, summarized in Table~\ref{tab:refs}. The classical benchmark remains BM3D \citep{dabov2007bm3d}, which stacks mutually similar 2D patches into 3D groups, applies transform-domain shrinkage (biorthogonal/DCT), and aggregates inverse transforms. For Poisson-Gaussian noise, BM3D is traditionally combined with the generalized Anscombe transform \citep{makitalo2011anscombe} to stabilize noise variance prior to collaborative filtering.
+
+Deep learning introduced residual learning via DnCNN \citep{zhang2017dncnn}, demonstrating that predicting the noise residual $\hat{\eta} = y - x$ stabilizes gradient propagation compared to directly predicting the clean image. In medical imaging, RED-CNN \citep{chen2017redcnn} incorporated residual convolutional encoder-decoder structures with shortcut connections for low-dose CT, outperforming classical algorithms on the Mayo Clinic low-dose dataset. U-Net \citep{ronneberger2015unet} remains the established workhorse for biomedical image-to-image translation due to its multi-scale contracting and expanding paths linked by skip connections that preserve high-resolution spatial details.
+
+Recent literature (2024--2026) has explored diffusion models and task-specific objective functions. \citet{kim2025doseaware} proposed a dose-aware denoising diffusion model for low-dose CT that conditions the reverse diffusion trajectory directly on radiation dose levels, highlighting the necessity of evaluating algorithms across multiple noise regimes. \citet{zhao2025mocodiff} introduced MoCoDiff, utilizing momentum-context diffusion to preserve sharp anatomical boundaries in CT; however, diffusion models require hundreds of iterative sampling steps and heavy GPU resources, rendering them impractical for real-time edge or CPU-tier hospital deployment. 
+
+Our methodological foundation derives from \citet{dai2025compression}, who studied deep medical image compression using cross-attention and wavelet transforms, demonstrating that evaluating clinical region-of-interest (ROI) preservation reveals compression artifacts that standard PSNR fails to capture. We translate this core principle to medical image denoising: instead of relying exclusively on pixel metrics \citep{wang2004ssim}, we employ a frozen diagnostic model from TorchXRayVision \citep{cohen2022torchxrayvision} to measure downstream diagnostic preservation across 14 thoracic conditions on NIH ChestX-ray14 \citep{wang2017chestxray8}.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Summary of key literature and relevance to the proposed framework.}
+\label{tab:refs}
+\begin{tabular}{@{}p{0.24\linewidth}p{0.07\linewidth}p{0.24\linewidth}p{0.39\linewidth}@{}}
+\toprule
+\textbf{Reference} & \textbf{Year} & \textbf{Data / Domain} & \textbf{Relevance to this Project} \\
+\midrule
+\citet{dai2025compression} & 2025 & Medical Image Compression & Motivates our task-specific evaluation by proving ROI/clinical relevance captures artifacts missed by PSNR/SSIM. \\
+\citet{kim2025doseaware} & 2025 & Low-Dose CT (Mayo Clinic) & Demonstrates dose-conditioned denoising; motivates our stratified multi-level noise ablation. \\
+\citet{zhao2025mocodiff} & 2025 & Low-Dose CT Diffusion & SOTA diffusion upper-bound; motivates adopting an efficient lightweight CNN alternative for CPU/GPU-light feasibility. \\
+\citet{dabov2007bm3d} & 2007 & Natural / Medical Denoising & Primary classical baseline employing 3D transform collaborative shrinkage. \\
+\citet{makitalo2011anscombe} & 2011 & Poisson-Gaussian Denoising & Optimal Anscombe variance-stabilizing transformation paired with BM3D for signal-dependent noise. \\
+\citet{chen2017redcnn} & 2017 & Low-Dose CT & Foundational residual encoder-decoder CNN for low-dose restoration. \\
+\citet{zhang2017dncnn} & 2017 & Natural Image Denoising & Residual noise prediction framework adapted in our denoiser design. \\
+\citet{ronneberger2015unet} & 2015 & Biomedical Segmentation & Multi-scale skip-connection backbone adapted for our lightweight denoiser. \\
+\citet{cohen2022torchxrayvision} & 2022 & Chest Radiographs & Standardized multi-cohort pretrained classifier providing our frozen diagnostic evaluation proxy. \\
+\citet{wang2017chestxray8} & 2017 & Chest Radiographs (112k) & Source dataset containing 14 thoracic disease labels. \\
+\citet{wang2004ssim} & 2004 & Quality Assessment & Standard perceptual structural similarity index for pixel fidelity. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Dataset, Noise Simulation \& Baseline Plan}
+\label{sec:data}
+
+\paragraph{Dataset Specification.}
+We utilize the public NIH ChestX-ray14 collection \citep{wang2017chestxray8}, comprising 112{,}120 frontal-view chest radiographs from 30{,}805 unique patients annotated with 14 thoracic disease categories. To balance computational efficiency on the CPU/GPU-light tier with statistical rigor, we draw a representative subset of 3{,}000 images resized to $256 \times 256$ pixels (Table~\ref{tab:data}). Split assignments are conducted strictly at the \emph{patient level} (using patient ID hashes), preventing patient overlap across splits.
+
+\begin{table}[h]
+\centering
+\caption{Dataset partition and experimental subset configuration.}
+\label{tab:data}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Split} & \textbf{Images} & \textbf{Unique Patients} & \textbf{Resolution / Normalization} \\
+\midrule
+Training Set   & 2{,}000 & $\approx 1{,}250$ & $256 \times 256$, Grayscale float32 $\in [0, 1]$ \\
+Validation Set & 400   & $\approx 250$   & $256 \times 256$, Grayscale float32 $\in [0, 1]$ \\
+Test Set       & 600   & $\approx 380$   & $256 \times 256$, Grayscale float32 $\in [0, 1]$ \\
+\midrule
+\textbf{Total / Source} & 3{,}000 & $\approx 1{,}880$ & \url{https://www.kaggle.com/datasets/nih-chest-xrays/data} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Synthetic Low-Dose Noise Model.}
+Because paired clinical acquisitions at varying dose levels are publicly unavailable, clean radiographs $x \in [0, 1]$ are corrupted via a physical Poisson-Gaussian compound process:
+\begin{equation}
+  y = \frac{\mathcal{P}(\lambda \cdot x)}{\lambda} + \mathcal{N}(0, \sigma^2),
+  \label{eq:noise}
+\end{equation}
+where $\mathcal{P}(\lambda \cdot x)$ represents the discrete Poisson photon detection with scaling factor $\lambda$ (lower $\lambda$ models reduced photon count at lower radiation dose), and $\mathcal{N}(0, \sigma^2)$ represents zero-mean Gaussian electronic noise. We establish three standardized experimental noise regimes:
+\begin{itemize}[leftmargin=*,noitemsep]
+  \item \textbf{Low Noise (Moderate Dose):} $\lambda = 100$, $\sigma = 0.01$ (typical PSNR $\sim 30\text{ dB}$).
+  \item \textbf{Medium Noise (Standard Low Dose):} $\lambda = 50$, $\sigma = 0.02$ (typical PSNR $\sim 24\text{ dB}$, primary benchmark).
+  \item \textbf{High Noise (Ultra-Low Dose):} $\lambda = 25$, $\sigma = 0.04$ (typical PSNR $\sim 19\text{ dB}$, stress-test regime).
+\end{itemize}
+
+\paragraph{Baseline Reproduction.}
+We reproduce two classical restoration filters:
+\begin{enumerate}[leftmargin=*,noitemsep]
+  \item \textbf{Anscombe-BM3D \citep{dabov2007bm3d,makitalo2011anscombe}:} The noisy observation $y$ is stabilized via the generalized Anscombe transform $f(y) = 2\sqrt{\max(0, y + \frac{3}{8} + \sigma^2)}$, processed with standard 3D transform shrinkage (collaborative Wiener filtering), and transformed back using the closed-form unbiased inverse.
+  \item \textbf{Median Filter:} A $3 \times 3$ sliding window median filter serving as an efficient non-linear baseline.
+\end{enumerate}
+
+\subsection{Ethics, Privacy \& Licensing Review}
+\label{sec:ethics}
+In compliance with project guidelines and Section 9.3 of the course syllabus:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Dataset Licensing:} The NIH ChestX-ray14 dataset is released for open scientific research by the NIH Clinical Center under Open Access terms. We access the data via official Kaggle distribution channels in compliance with its data usage agreement.
+  \item \textbf{Patient Privacy \& Anonymity:} The original DICOM images were anonymized by the NIH through automated software and clinical review following HIPAA Safe Harbor guidelines (removing all 18 direct identifiers). Our team explicitly pledges to make \emph{no attempt to re-identify} individuals, reconstruct protected health information (PHI), or cross-reference patient metadata with external clinical registries.
+  \item \textbf{Clinical Limitation Disclaimer:} Simulated Poisson-Gaussian noise is an idealized mathematical proxy that does not capture scanner-specific beam hardening, patient scatter, or detector point-spread functions. All findings will be reported as computational algorithmic benchmarks without claiming direct unvalidated clinical deployment readiness.
+\end{itemize}
+
+\section{Proposed Method}
+\label{sec:method}
+
+\paragraph{Denoiser Architecture.}
+We design a lightweight Residual U-Net (ResU-Net) optimized for computational efficiency and gradient stability. The network $f_\theta$ takes the corrupted image $y \in \mathbb{R}^{1 \times 256 \times 256}$ and predicts the noise residual $\hat{\eta} = f_\theta(y)$. The restored estimate is obtained via subtractive skip connection:
+\begin{equation}
+  \hat{x} = y - f_\theta(y).
+\end{equation}
+The architecture comprises a 4-level symmetric encoder-decoder:
+\begin{itemize}[leftmargin=*,noitemsep]
+  \item \textbf{Channel Progression:} $1 \to 16 \to 32 \to 64 \to 128$ in the contracting path, mirrored in the expansive path ($128 \to 64 \to 32 \to 16 \to 1$).
+  \item \textbf{Convolutions \& Activations:} Each stage contains two $3 \times 3$ convolutional layers with LeakyReLU activations ($\alpha = 0.1$). Batch Normalization is intentionally excluded because channel-wise mean and variance shifting often introduces high-frequency artifacts and alters dynamic range in pixel restoration.
+  \item \textbf{Down/Up-sampling:} Downsampling uses $2 \times 2$ max-pooling; upsampling employs bilinear interpolation followed by $1 \times 1$ convolutions and concatenation with encoder skip features.
+  \item \textbf{Parameter Budget:} The complete model contains $\approx 384{,}000$ trainable parameters, ensuring lightweight execution well within standard laptop memory constraints.
+\end{itemize}
+
+\paragraph{Training Objective.}
+The denoiser is trained using an $\ell_1$ reconstruction loss on simulated pairs $(y, x)$:
+\begin{equation}
+  \mathcal{L}_{\mathrm{rec}}(\theta) = \frac{1}{N} \sum_{i=1}^N \|\hat{x}_i - x_i\|_1.
+  \label{eq:l1_loss}
+\end{equation}
+For our stretch goal, we explore a composite diagnostic-guided loss:
+\begin{equation}
+  \mathcal{L}_{\mathrm{joint}}(\theta) = \|\hat{x} - x\|_1 + \gamma \, \|g(\hat{x}) - g(x)\|_1,
+  \label{eq:joint_loss}
+\end{equation}
+where $g(\cdot)$ represents latent representations from the frozen classifier and $\gamma = 0.05$.
+
+\paragraph{Diagnostic-Preservation Evaluation Protocol.}
+Let $g: \mathbb{R}^{1 \times 256 \times 256} \to [0, 1]^{14}$ denote a frozen DenseNet-121 classifier from TorchXRayVision \citep{cohen2022torchxrayvision} (`densenet121-res224-all`), whose weights remain static throughout all experiments. For clean image $x$ and denoised estimate $\hat{x}$, we compute:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Probability Vector Mean Absolute Deviation ($\Delta p$):}
+  \begin{equation}
+    \Delta p(x, \hat{x}) = \frac{1}{14} \sum_{k=1}^{14} \big| g_k(\hat{x}) - g_k(x) \big|.
+  \end{equation}
+  \item \textbf{Binary Diagnostic Agreement ($\mathrm{Agr}_\tau$):}
+  Evaluating whether predictions cross clinical decision thresholds $\tau_k = 0.5$:
+  \begin{equation}
+    \mathrm{Agr}_\tau(x, \hat{x}) = \frac{1}{14} \sum_{k=1}^{14} \mathbb{I}\Big( \big(g_k(\hat{x}) \ge \tau_k\big) \iff \big(g_k(x) \ge \tau_k\big) \Big).
+  \end{equation}
+  \item \textbf{Pathology-Specific AUC Degradation ($\Delta \mathrm{AUC}$):}
+  Comparing ROC-AUC scores evaluated against ground-truth ChestX-ray14 labels:
+  \begin{equation}
+    \Delta \mathrm{AUC}_k = \mathrm{AUC}_k(x) - \mathrm{AUC}_k(\hat{x}).
+  \end{equation}
+\end{enumerate}
+
+\begin{table}[t]
+\centering
+\small
+\caption{End-to-end operational pipeline of the diagnostic-preserving denoising framework.}
+\label{tab:pipeline}
+\begin{tabular}{@{}llp{0.58\linewidth}@{}}
+\toprule
+\textbf{Stage} & \textbf{Component} & \textbf{Operational Details} \\
+\midrule
+1. Input & Clean Image $x$ & Patient-disjoint test crop ($256 \times 256$, normalized to $[0, 1]$). \\
+2. Corruption & Noise Engine & Generate low-dose observation $y = \frac{\mathcal{P}(\lambda x)}{\lambda} + \mathcal{N}(0, \sigma^2)$. \\
+3. Denoising & Baseline / ResU-Net & Compute $\hat{x}_{\mathrm{BM3D}}$ via Anscombe-BM3D or $\hat{x}_{\mathrm{Ours}} = y - f_\theta(y)$. \\
+4. Pixel Metrics & Fidelity Assessment & Calculate $\mathrm{PSNR}(x, \hat{x})$ and $\mathrm{SSIM}(x, \hat{x})$ over the image domain. \\
+5. Diagnosis & Frozen Classifier $g$ & Forward pass $g(x)$ and $g(\hat{x})$ via TorchXRayVision DenseNet-121. \\
+6. Task Metrics & Preservation Engine & Calculate probability gap $\Delta p$, agreement $\mathrm{Agr}_\tau$, and $\Delta \mathrm{AUC}$. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Feasibility \& Compute Plan}
+\label{sec:feasibility}
+\textbf{Compute Tier: CPU-OK / GPU-Light.} The project is budgeted for standard laptop hardware (e.g., an 8-core CPU or an entry-level mobile GPU such as NVIDIA RTX 3050/4060):
+\begin{itemize}[leftmargin=*,noitemsep]
+  \item \textbf{Training Budget:} Training our 384k-parameter ResU-Net on 2{,}000 images ($256 \times 256$, batch size 16) takes $\approx 1.2$ minutes per epoch on a laptop GPU (total 30 epochs $\approx 36$ minutes) or $\approx 5.5$ minutes per epoch on a modern multicore CPU ($\approx 2.7$ hours total).
+  \item \textbf{Inference \& Evaluation Budget:} Anscombe-BM3D requires $\approx 1.5$ seconds per $256 \times 256$ image on CPU; evaluating all 600 test images requires $\approx 15$ minutes. ResU-Net inference requires $\approx 15\text{ ms}$ per image on GPU ($\approx 9$ seconds total) or $\approx 70\text{ ms}$ on CPU ($\approx 42$ seconds total).
+  \item \textbf{Frozen Classifier Inference:} Forward inference of TorchXRayVision on 600 images takes $<20$ seconds on GPU and $\approx 1.5$ minutes on CPU.
+\end{itemize}
+
+\subsection{Minimum Viable Deliverable (MVP)}
+The MVP delivers: (1) an end-to-end Poisson-Gaussian noise simulation pipeline; (2) verified implementations of Anscombe-BM3D and median filtering; (3) a fully trained ResU-Net denoiser at medium noise ($\lambda = 50, \sigma = 0.02$); and (4) a quantitative comparison table on the 600-image test set reporting PSNR, SSIM, mean $\Delta p$, and diagnostic agreement against the frozen classifier.
+
+\subsection{Stretch Goals}
+Upon completing the MVP (Week 6), we will execute: (1) a multi-level dose ablation across all three noise regimes; (2) training with the joint diagnostic loss (Eq.~\ref{eq:joint_loss}); and (3) a per-pathology error analysis identifying which of the 14 conditions (e.g., Pneumothorax vs. Cardiomegaly) are most vulnerable to denoising smoothing.
+
+\section{Risk Assessment \& Mitigation}
+\label{sec:risk}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Risk 1: Classifier Training Set Contamination.} Pretrained TorchXRayVision weights might have been trained on images in ChestX-ray14, artificially inflating prediction stability. \\
+  \emph{Mitigation:} We employ the `densenet121-res224-all` model trained jointly on multiple cohorts (MIMIC-CXR, CheXpert, PadChest, NIH). Furthermore, our metrics evaluate relative consistency between $g(\hat{x})$ and $g(x)$ rather than accuracy against ground-truth labels alone.
+  \item \textbf{Risk 2: Synthetic vs. Clinical Physics Discrepancy.} Poisson-Gaussian noise does not account for complex CT projection geometry or scanner scatter. \\
+  \emph{Mitigation:} We calibrate parameters $(\lambda, \sigma)$ to match clinically reported low-dose contrast-to-noise ratios, benchmark multiple noise levels, and explicitly restrict conclusions to simulated low-dose conditions.
+  \item \textbf{Risk 3: Computational Bottleneck of BM3D.} Applying BM3D on large image sets can be slow on CPU. \\
+  \emph{Mitigation:} BM3D evaluation is constrained strictly to the 600-image test split, utilizing multi-threaded C-backed extensions (`bm3d` Python package) with Anscombe pre-transformation.
+  \item \textbf{Risk 4: Oversmoothing of Diagnostic Edges.} Standard $\ell_1$ pixel reconstruction may cause loss of subtle high-frequency lesion borders. \\
+  \emph{Mitigation:} The lightweight U-Net incorporates direct skip connections across all 4 stages. If oversmoothing persists, the joint perceptual diagnostic loss (Eq.~\ref{eq:joint_loss}) will be activated.
+\end{itemize}
+
+\section{Work Breakdown \& Team Task Allocation}
+\label{sec:workbreakdown}
+The catalog specification outlines three functional roles (A: Data \& Baseline, B: Model/Algorithm, C: Evaluation). Our two-member team divides these responsibilities equitably, with each member leading one core development track and sharing evaluation responsibilities:
+\begin{itemize}[leftmargin=*,noitemsep]
+  \item \textbf{Omar Hesham Nasr (Student A + Evaluation Co-Lead):} Leads dataset subsampling, patient-disjoint splitting, noise-simulation pipeline, BM3D/median baseline reproduction, and AUC ROC statistical evaluations.
+  \item \textbf{Mohamed Ahmed Abdelsalaam (Student B + Evaluation Co-Lead):} Leads ResU-Net architectural design, training and optimization pipeline, TorchXRayVision classifier integration, and $\Delta p$ agreement metric computation.
+\end{itemize}
+
+\begin{table}[h]
+\centering
+\caption{Milestone task allocation and responsibilities across the 9-week project lifecycle.}
+\label{tab:tasks}
+\begin{tabular}{@{}p{0.14\linewidth}p{0.41\linewidth}p{0.41\linewidth}@{}}
+\toprule
+\textbf{Milestone} & \textbf{Omar Hesham Nasr (2401812)} & \textbf{Mohamed Ahmed Abdelsalaam (2400033)} \\
+\midrule
+\textbf{M1 (Wk 3)} \newline \emph{Proposal} & 
+ChestX-ray14 patient-disjoint partition; Poisson-Gaussian noise simulation module; data licensing \& ethics statement. & 
+Lightweight ResU-Net architecture design; parameter budgeting; TorchXRayVision frozen classifier integration. \\
+\midrule
+\textbf{M2 (Wk 6)} \newline \emph{Progress} & 
+Anscombe-BM3D and median filter baseline benchmarks; preliminary ROC-AUC preservation comparisons on test split. & 
+ResU-Net model training pipeline; initial checkpoint convergence; preliminary pixel vs. $\Delta p$ comparison table. \\
+\midrule
+\textbf{M3 (Wk 9)} \newline \emph{Final} & 
+Final baseline benchmark tables; multi-dose noise ablation analysis; repository documentation and presentation slides. & 
+Final denoiser checkpoint; stretch diagnostic loss experiments; per-pathology error analysis and report synthesis. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+\end{document}

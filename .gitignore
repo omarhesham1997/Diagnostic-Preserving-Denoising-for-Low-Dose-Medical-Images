@@ -1,0 +1,33 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# ChestX-ray14 is large and license-restricted; only scripts in data/ are tracked
+data/*
+!data/*.py
+
+*.pt
+*.pth
+*.ckpt
+
+# Kaggle credentials
+.env
+kaggle.json
+
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+.DS_Store
+Thumbs.db

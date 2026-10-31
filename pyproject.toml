@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cse681-denoising"
+version = "0.1.0"
+description = "Diagnostic-preserving denoising for low-dose medical images (NIH ChestX-ray14)"
+requires-python = ">=3.10"
+authors = [
+    { name = "Omar Hesham Hanafy Mohamed Nasr" },
+    { name = "Mohamed Ahmed Abdelsalaam" },
+]
+dependencies = [
+    "bm3d",
+    "kagglehub",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "pillow",
+    "scikit-image",
+    "scikit-learn",
+    # For a CUDA build, install torch/torchvision from the PyTorch index first.
+    "torch",
+    "torchvision",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools]
+# No importable package yet; keeps flat-layout discovery from treating data/ as one.
+py-modules = []
