@@ -13,6 +13,7 @@
 \usepackage[round]{natbib}
 \usepackage{hyperref}
 \hypersetup{colorlinks=true, linkcolor=blue!50!black, citecolor=blue!50!black, urlcolor=blue!50!black}
+\usepackage{xurl}
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{array}
@@ -23,7 +24,8 @@
   Omar Hesham Hanafy Mohamed Nasr (2401812) \and
   Mohamed Ahmed Abdelsalaam (2400033)
 }
-\date{Milestone 1 --- October 2026 \\{} CSE681 --- Digital Image Processing}
+\date{Milestone 1 --- October 2026 \\{} CSE681 --- Digital Image Processing \\[6pt]
+\normalsize \textbf{Code Repository:} \url{https://github.com/omarhesham1997/Diagnostic-Preserving-Denoising-for-Low-Dose-Medical-Images}}
 
 \begin{document}
 \maketitle
@@ -87,7 +89,7 @@ We utilize the public NIH ChestX-ray14 collection \citep{wang2017chestxray8}, co
 \centering
 \caption{Dataset partition and experimental subset configuration.}
 \label{tab:data}
-\begin{tabular}{@{}llll@{}}
+\begin{tabular}{@{}lllp{0.38\linewidth}@{}}
 \toprule
 \textbf{Split} & \textbf{Images} & \textbf{Unique Patients} & \textbf{Resolution / Normalization} \\
 \midrule
@@ -207,6 +209,9 @@ Let $g: \mathbb{R}^{1 \times 256 \times 256} \to [0, 1]^{14}$ denote a frozen De
 
 \subsection{Minimum Viable Deliverable (MVP)}
 The MVP delivers: (1) an end-to-end Poisson-Gaussian noise simulation pipeline; (2) verified implementations of Anscombe-BM3D and median filtering; (3) a fully trained ResU-Net denoiser at medium noise ($\lambda = 50, \sigma = 0.02$); and (4) a quantitative comparison table on the 600-image test set reporting PSNR, SSIM, mean $\Delta p$, and diagnostic agreement against the frozen classifier.
+
+\paragraph{Code Repository \& Reproducibility.}
+All source code, noise simulation modules, model definitions, training scripts, and baseline implementations are open-source and maintained at \url{https://github.com/omarhesham1997/Diagnostic-Preserving-Denoising-for-Low-Dose-Medical-Images}.
 
 \subsection{Stretch Goals}
 Upon completing the MVP (Week 6), we will execute: (1) a multi-level dose ablation across all three noise regimes; (2) training with the joint diagnostic loss (Eq.~\ref{eq:joint_loss}); and (3) a per-pathology error analysis identifying which of the 14 conditions (e.g., Pneumothorax vs. Cardiomegaly) are most vulnerable to denoising smoothing.
