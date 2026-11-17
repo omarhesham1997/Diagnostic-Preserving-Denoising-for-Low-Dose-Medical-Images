@@ -4,8 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cse681-denoising"
-version = "0.1.0"
+version = "0.2.0"
 description = "Diagnostic-preserving denoising for low-dose medical images (NIH ChestX-ray14)"
+readme = "README.md"
 requires-python = ">=3.10"
 authors = [
     { name = "Omar Hesham Hanafy Mohamed Nasr" },
@@ -13,21 +14,40 @@ authors = [
 ]
 dependencies = [
     "bm3d",
+    "joblib",
     "kagglehub",
     "matplotlib",
     "numpy",
     "pandas",
     "pillow",
+    "pyyaml",
     "scikit-image",
     "scikit-learn",
-    # For a CUDA build, install torch/torchvision from the PyTorch index first.
-    "torch",
-    "torchvision",
+    "scipy",
+    # 2.9 is the first release with CUDA 13.0 builds (CUDA 12.8 builds stopped after 2.11).
+    "torch>=2.9",
+    "torchvision>=0.24",
+    "torchxrayvision",
+    "tqdm",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
+# Installed automatically by `uv sync`.
 dev = ["pytest", "ruff"]
 
-[tool.setuptools]
-# No importable package yet; keeps flat-layout discovery from treating data/ as one.
-py-modules = []
+# On Windows and Linux, take torch/torchvision from the official CUDA 13.0 index.
+# Plain PyPI gives a CPU-only build on Windows. macOS uses PyPI (no CUDA there).
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu130", marker = "sys_platform == 'win32' or sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cu130", marker = "sys_platform == 'win32' or sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

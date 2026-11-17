@@ -4,6 +4,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+.idea/
 .pytest_cache/
 .ruff_cache/
 
@@ -14,6 +15,9 @@ data/*
 *.pt
 *.pth
 *.ckpt
+
+# Generated results, checkpoints and figures (recreate with the scripts)
+outputs/
 
 # Kaggle credentials
 .env

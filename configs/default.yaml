@@ -1,0 +1,40 @@
+# All experiment settings in one place.
+# Relative paths are resolved from the repository root.
+
+seed: 42
+
+paths:
+  raw_data: data/raw          # Kaggle NIH files: Data_Entry_2017.csv + image folders (not committed)
+  processed: data/processed   # 256x256 preprocessed images (not committed)
+  splits: splits              # patient-level split CSV (committed, no images)
+  outputs: outputs            # results, checkpoints, figures (not committed)
+
+data:
+  n_images: 3000
+  split_sizes: {train: 2000, val: 400, test: 600}
+  image_size: 256
+
+noise:
+  primary: medium             # main experiment for M2
+  levels:
+    low:    {lambda_photons: 100.0, sigma_electronic: 0.01}
+    medium: {lambda_photons: 50.0,  sigma_electronic: 0.02}
+    high:   {lambda_photons: 25.0,  sigma_electronic: 0.04}
+  # Fixed noise for evaluation: seed of image i = base + i
+  val_seed_base: 200000
+  test_seed_base: 100000
+
+classifier:
+  weights: densenet121-res224-all   # TorchXRayVision, frozen
+  input_size: 224
+  threshold: 0.5
+  min_positives_for_auc: 25         # skip dAUC for rarer diseases
+
+baselines:
+  median_size: 3
+
+training:
+  epochs: 30
+  batch_size: 16
+  lr: 1.0e-3
+  num_workers: 0              # keep 0 on Windows at first; raise later if data loading is slow
