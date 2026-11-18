@@ -31,6 +31,7 @@ kaggle.json
 *.blg
 *.fls
 *.fdb_latexmk
+*.patch
 *.synctex.gz
 
 .DS_Store
