@@ -39,5 +39,6 @@ baselines:
 training:
   epochs: 30
   batch_size: 16
-  lr: 1.0e-3
-  num_workers: 0              # keep 0 on Windows at first; raise later if data loading is slow
+  lr: 1.0e-3                  # Adam, cosine decay to 0 over all steps
+  augment_flip: true          # random left-right flip of training images
+  # Training images stay on the GPU and noise is added there, so no data-loader workers are needed.

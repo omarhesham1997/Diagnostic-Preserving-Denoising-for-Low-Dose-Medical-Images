@@ -1,0 +1,10 @@
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+\textbf{Method} & \textbf{PSNR (dB)} $\uparrow$ & \textbf{SSIM} $\uparrow$ & $\boldsymbol{\Delta p}$ $\downarrow$ & \textbf{Agr.} $\uparrow$ & \textbf{Lost} $\downarrow$ & \textbf{New} $\downarrow$ & \textbf{Macro $\Delta$AUC} \\
+\midrule
+Noisy (no denoising) & 19.77 $\pm$ 0.68 & 0.249 $\pm$ 0.069 & 0.2947 & 0.574 & 0.817 & 0.295 & $+0.158$ [$+0.096$, $+0.225$] \\
+Median $3\times3$ & 26.77 $\pm$ 0.67 & 0.553 $\pm$ 0.070 & 0.3527 & 0.372 & 0.063 & 0.816 & $+0.143$ [$+0.090$, $+0.196$] \\
+Anscombe-BM3D & 33.51 $\pm$ 0.99 & 0.884 $\pm$ 0.018 & 0.0961 & 0.805 & 0.107 & 0.224 & $+0.051$ [$+0.017$, $+0.080$] \\
+ResU-Net (ours) & 34.47 $\pm$ 1.09 & 0.912 $\pm$ 0.017 & 0.0555 & 0.898 & 0.285 & 0.041 & $+0.017$ [$-0.005$, $+0.036$] \\
+\bottomrule
+\end{tabular}

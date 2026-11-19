@@ -1,0 +1,13 @@
+\begin{tabular}{@{}lccccl@{}}
+\toprule
+\textbf{Metric} & \textbf{ResU-Net (ours)} & \textbf{Anscombe-BM3D} & \textbf{Difference [95\% CI]} & \textbf{Wilcoxon $p$} & \textbf{Better} \\
+\midrule
+PSNR (dB) $\uparrow$ & 34.47 & 33.51 & $+0.964$ [$+0.941$, $+0.988$] & $<0.001$ & ResU-Net \\
+SSIM $\uparrow$ & 0.912 & 0.884 & $+0.027$ [$+0.027$, $+0.028$] & $<0.001$ & ResU-Net \\
+$\Delta p$ $\downarrow$ & 0.0555 & 0.0961 & $-0.041$ [$-0.045$, $-0.036$] & $<0.001$ & ResU-Net \\
+Agreement $\uparrow$ & 0.898 & 0.805 & $+0.093$ [$+0.080$, $+0.106$] & $<0.001$ & ResU-Net \\
+Lost findings $\downarrow$ & 0.285 & 0.107 & $+0.178$ [$+0.156$, $+0.201$] & -- & Anscombe-BM3D \\
+New findings $\downarrow$ & 0.041 & 0.224 & $-0.184$ [$-0.197$, $-0.170$] & -- & ResU-Net \\
+Macro AUC $\uparrow$ & 0.724 & 0.690 & $+0.034$ [$+0.009$, $+0.057$] & -- & ResU-Net \\
+\bottomrule
+\end{tabular}

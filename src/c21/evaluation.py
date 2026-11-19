@@ -227,3 +227,120 @@ def sanity_checks(summary: pd.DataFrame) -> dict[str, bool]:
     if "bm3d" in s.index and "median" in s.index:
         checks["BM3D PSNR above Median"] = s.loc["bm3d", "psnr_mean"] > s.loc["median", "psnr_mean"]
     return checks
+
+
+# ---------------------------------------------------------------------------
+# Paired comparison of two methods (same images, same noise)
+# ---------------------------------------------------------------------------
+
+
+def paired_comparison(per_a: pd.DataFrame, per_b: pd.DataFrame, labels: np.ndarray, p_clean: np.ndarray,
+                      p_a: np.ndarray, p_b: np.ndarray, diseases: list[int], threshold: float = 0.5,
+                      n_boot: int = 1000, seed: int = 0) -> pd.DataFrame:
+    """Method A vs method B on the same images: mean difference (A - B), paired bootstrap 95% CI,
+    Wilcoxon signed-rank p-value (per-image metrics), and the share of images where A is better.
+
+    `better` says which method wins when the CI excludes 0 ("no clear difference" otherwise).
+    """
+    from scipy.stats import wilcoxon
+
+    from c21.metrics import auc
+
+    if list(per_a["image"]) != list(per_b["image"]):
+        raise ValueError("per-image tables are not in the same image order")
+    n = len(per_a)
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, n, size=(n_boot, n))
+    name_a, name_b = per_a["method"].iloc[0], per_b["method"].iloc[0]
+    rows = []
+
+    def add(metric, a_val, b_val, boot_diffs, higher_is_better, p_value=np.nan, a_better_share=np.nan):
+        lo, hi = np.nanpercentile(boot_diffs, [2.5, 97.5])
+        diff = a_val - b_val
+        if lo > 0 or hi < 0:
+            a_wins = (diff > 0) == higher_is_better
+            better = display_name(name_a if a_wins else name_b)
+        else:
+            better = "no clear difference"
+        rows.append({"metric": metric, "a": a_val, "b": b_val, "diff": diff, "ci_low": lo, "ci_high": hi,
+                     "p_value": p_value, "a_better_share": a_better_share,
+                     "higher_is_better": higher_is_better, "better": better})
+
+    for col, label, higher in [("psnr", "PSNR (dB)", True), ("ssim", "SSIM", True),
+                               ("delta_p", "delta_p", False), ("agreement", "Agreement", True)]:
+        a, b = per_a[col].to_numpy(), per_b[col].to_numpy()
+        d = a - b
+        try:
+            p = float(wilcoxon(a, b).pvalue) if np.any(d != 0) else 1.0
+        except ValueError:
+            p = np.nan
+        share = float(np.mean(d > 0) if higher else np.mean(d < 0))
+        add(label, float(a.mean()), float(b.mean()), d[idx].mean(axis=1), higher, p, share)
+
+    # Pooled lost / new findings (lower is better)
+    yes_clean = p_clean >= threshold
+    for label, mask_fn in [("Lost findings", lambda p: yes_clean & (p < threshold)),
+                           ("New findings", lambda p: ~yes_clean & (p >= threshold))]:
+        base = yes_clean.sum(axis=1) if label == "Lost findings" else (~yes_clean).sum(axis=1)
+        ca, cb = mask_fn(p_a).sum(axis=1), mask_fn(p_b).sum(axis=1)
+        rate = lambda c, i: c[i].sum(axis=-1) / np.maximum(base[i].sum(axis=-1), 1)  # noqa: E731
+        add(label, float(ca.sum() / base.sum()), float(cb.sum() / base.sum()),
+            rate(ca, idx) - rate(cb, idx), higher_is_better=False)
+
+    # Macro AUC against the doctor labels (higher is better)
+    if diseases:
+        def macro_auc(p, i=slice(None)):
+            return np.nanmean([auc(labels[i, k], p[i, k]) for k in diseases])
+
+        boot = np.array([macro_auc(p_a, i) - macro_auc(p_b, i) for i in idx])
+        add("Macro AUC", float(macro_auc(p_a)), float(macro_auc(p_b)), boot, higher_is_better=True)
+
+    out = pd.DataFrame(rows)
+    out.insert(0, "method_b", name_b)
+    out.insert(0, "method_a", name_a)
+    return out
+
+
+def comparison_to_latex(df: pd.DataFrame) -> str:
+    name_a = display_name(df["method_a"].iloc[0], latex=True)
+    name_b = display_name(df["method_b"].iloc[0], latex=True)
+    fmt = {"PSNR (dB)": "{:.2f}", "SSIM": "{:.3f}", "delta_p": "{:.4f}", "Agreement": "{:.3f}",
+           "Lost findings": "{:.3f}", "New findings": "{:.3f}", "Macro AUC": "{:.3f}"}
+    tex_name = {"delta_p": r"$\Delta p$", "PSNR (dB)": "PSNR (dB)"}
+    lines = [r"\begin{tabular}{@{}lccccl@{}}", r"\toprule",
+             f"\\textbf{{Metric}} & \\textbf{{{name_a}}} & \\textbf{{{name_b}}} & "
+             r"\textbf{Difference [95\% CI]} & \textbf{Wilcoxon $p$} & \textbf{Better} \\", r"\midrule"]
+    for _, r in df.iterrows():
+        f = fmt.get(r["metric"], "{:.3f}")
+        arrow = r"$\uparrow$" if r["higher_is_better"] else r"$\downarrow$"
+        p = "--" if pd.isna(r["p_value"]) else ("$<0.001$" if r["p_value"] < 0.001 else f"{r['p_value']:.3f}")
+        diff = f"${r['diff']:+.3f}$ [${r['ci_low']:+.3f}$, ${r['ci_high']:+.3f}$]"
+        better = r["better"].replace("ResU-Net (ours)", "ResU-Net")
+        lines.append(f"{tex_name.get(r['metric'], r['metric'])} {arrow} & {f.format(r['a'])} & {f.format(r['b'])} & "
+                     f"{diff} & {p} & {better} \\\\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    return "\n".join(lines) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# Example selection for figures
+# ---------------------------------------------------------------------------
+
+
+def pick_examples(per_ref: pd.DataFrame, rows: pd.DataFrame) -> list[tuple[str, int, str]]:
+    """Return [(tag, index, reason)] for the three example images (distinct indices)."""
+    chosen = []
+
+    def median_index(idx):
+        idx = list(idx)
+        order = per_ref.loc[idx, "psnr"].sort_values().index
+        return int(order[len(order) // 2])
+
+    chosen.append(("1_typical", median_index(per_ref.index), "median PSNR over the test set"))
+    small = rows.index[(rows["Nodule"] == 1) | (rows["Mass"] == 1)]
+    small = [i for i in small if i not in {c[1] for c in chosen}]
+    if small:
+        chosen.append(("2_small_finding", median_index(small), "median PSNR among Nodule/Mass images"))
+    rest = per_ref.drop(index=[c[1] for c in chosen])
+    chosen.append(("3_worst_case", int(rest["delta_p"].idxmax()), "largest delta_p, the worst case"))
+    return chosen

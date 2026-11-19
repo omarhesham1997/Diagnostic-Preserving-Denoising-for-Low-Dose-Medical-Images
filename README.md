@@ -44,6 +44,33 @@ uv run python scripts/make_noisy_sets.py    # fixed noisy val/test sets for low/
 
 Each step prints checksums; re-running a step gives identical checksums.
 
+## Experiments
+
+```powershell
+uv run python scripts/judge_check.py                          # frozen classifier sanity check
+uv run python scripts/evaluate.py --methods noisy median bm3d # classical baselines
+uv run python scripts/train.py --overfit-one-batch            # network sanity check
+uv run python scripts/train.py                                # ResU-Net, medium noise
+uv run python scripts/evaluate.py --methods resunet           # add the network to the results table
+uv run python scripts/compare.py                              # paired ResU-Net vs BM3D comparison
+uv run python scripts/make_figures.py                         # qualitative figures + PSNR vs delta_p chart
+```
+
+Tables (`summary.tex`, `dauc.tex`, `compare_resunet_vs_bm3d.tex`) are written to
+`outputs/results/test_<level>/` and figures to `outputs/figures/`.
+
+## Reports
+
+```powershell
+uv run python scripts/export_report_assets.py   # tables, number macros and figures -> report/m2/
+cd report/m2
+pdflatex main; bibtex main; pdflatex main; pdflatex main
+```
+
+Every number in the report text is a macro from `report/m2/generated/numbers.tex`, written by
+the export script from the saved results, so the report always matches the experiments.
+The `report/m2` folder is self-contained and also compiles on Overleaf.
+
 ## Repository layout
 
 ```

@@ -21,6 +21,7 @@ import sys
 import time
 
 import numpy as np
+import pandas as pd
 
 from c21.classifier import FrozenClassifier
 from c21.config import load_config
@@ -54,10 +55,11 @@ def main() -> int:
     used = eligible_diseases(labels, min_pos)
     print(f"1) Judge AUC on clean test images (dAUC uses diseases with {min_pos}+ cases)")
     print(f"   {'disease':20s}{'cases':>7s}{'AUC':>8s}")
-    aucs = []
+    aucs, auc_rows = [], []
     for k, name in enumerate(NIH_LABELS):
         a = auc(labels[:, k], p_clean[:, k])
         n_pos = int(labels[:, k].sum())
+        auc_rows.append({"disease": name, "cases": n_pos, "auc_clean": a, "used_for_dauc": k in used})
         if not np.isnan(a):
             aucs.append(a)
         note = "used for dAUC" if k in used else "too few cases"
@@ -77,7 +79,7 @@ def main() -> int:
     # 3) Noisy images, no denoising
     print("\n3) Noisy images (no denoising) vs clean")
     print(f"   {'level':8s}{'delta_p':>9s}{'agree':>8s}{'lost':>7s}{'new':>7s}{'macro dAUC [95% CI]':>28s}")
-    dps, losts, daucs = [], [], []
+    dps, losts, daucs, level_rows = [], [], [], []
     for lv in all_levels(cfg):
         noisy = load_noisy(cfg, "test", lv.name)[: len(clean)]
         p_noisy = judge.predict(noisy)
@@ -86,6 +88,10 @@ def main() -> int:
         dps.append(d["delta_p"].mean())
         losts.append(d["lost_findings"])
         daucs.append(m["delta_auc"])
+        level_rows.append({"level": lv.name, "lambda": lv.lambda_photons, "sigma": lv.sigma_electronic,
+                           "delta_p": d["delta_p"].mean(), "agreement": d["agreement"].mean(),
+                           "lost_findings": d["lost_findings"], "new_findings": d["new_findings"],
+                           "macro_dauc": m["delta_auc"], "ci_low": m["ci_low"], "ci_high": m["ci_high"]})
         ci = f"{m['delta_auc']:+.3f} [{m['ci_low']:+.3f}, {m['ci_high']:+.3f}]" if used else "n/a"
         print(f"   {lv.name:8s}{d['delta_p'].mean():9.4f}{d['agreement'].mean():8.3f}"
               f"{d['lost_findings']:7.3f}{d['new_findings']:7.3f}{ci:>28s}")
@@ -110,7 +116,12 @@ def main() -> int:
         out = cfg["paths"]["outputs"] / "predictions" / "test_clean.npy"
         out.parent.mkdir(parents=True, exist_ok=True)
         np.save(out, p_clean)
+        res = cfg["paths"]["outputs"] / "results"
+        res.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(auc_rows).to_csv(res / "judge_clean_auc.csv", index=False, lineterminator="\n")
+        pd.DataFrame(level_rows).to_csv(res / "judge_noise_levels.csv", index=False, lineterminator="\n")
         print(f"\nSaved clean-image predictions: {out}")
+        print(f"Saved tables: {res / 'judge_clean_auc.csv'}, judge_noise_levels.csv")
     return 0 if all(checks.values()) else 1
 
 
