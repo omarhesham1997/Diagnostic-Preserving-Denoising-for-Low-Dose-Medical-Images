@@ -175,6 +175,17 @@ def noisy_array_path(cfg: dict, split: str, level: str) -> Path:
     return cfg["paths"]["processed"] / "noisy" / f"{split}_{level}.npy"
 
 
+def split_rows(cfg: dict, split: str) -> pd.DataFrame:
+    """Rows of one split, in the same order as the preprocessed arrays."""
+    df = read_split(cfg)
+    return df[df["split"] == split].reset_index(drop=True)
+
+
+def load_label_matrix(cfg: dict, split: str) -> np.ndarray:
+    """Doctor labels of one split as a 0/1 matrix [N, 14] (NIH_LABELS order)."""
+    return split_rows(cfg, split)[NIH_LABELS].to_numpy(dtype=np.int64)
+
+
 def load_clean(cfg: dict, split: str) -> np.ndarray:
     """Clean images of one split as float32 in [0, 1], shape [N, H, W], in split-CSV order."""
     path = clean_array_path(cfg, split)

@@ -29,7 +29,9 @@ classifier:
   weights: densenet121-res224-all   # TorchXRayVision, frozen
   input_size: 224
   threshold: 0.5
-  min_positives_for_auc: 25         # skip dAUC for rarer diseases
+  min_positives_for_auc: 20         # dAUC only for diseases with 20+ test cases (5 in our split)
+  bootstrap_samples: 1000           # for the dAUC 95% confidence intervals
+  batch_size: 32
 
 baselines:
   median_size: 3
