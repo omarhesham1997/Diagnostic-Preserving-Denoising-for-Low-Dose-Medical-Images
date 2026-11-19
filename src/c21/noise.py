@@ -84,6 +84,14 @@ def add_noise(image: np.ndarray, level: NoiseLevel, seed: int | None = None,
                                       seed=seed, rng=rng, clip=clip)
 
 
+def make_noisy_set(clean: np.ndarray, level: NoiseLevel, seed_base: int) -> np.ndarray:
+    """Fixed noisy copy of a stack of images [N, H, W]: image i uses seed base + i.
+
+    Every method is evaluated on exactly these images. Output is float32, not clipped.
+    """
+    return np.stack([add_noise(img, level, seed=image_seed(seed_base, i)) for i, img in enumerate(clean)])
+
+
 def add_noise_torch(x, lambda_photons, sigma_electronic, generator=None):
     """PyTorch version for training: new random noise on every call, on CPU or GPU.
 

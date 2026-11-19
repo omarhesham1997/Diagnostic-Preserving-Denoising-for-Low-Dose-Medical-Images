@@ -13,6 +13,7 @@ data:
   n_images: 3000
   split_sizes: {train: 2000, val: 400, test: 600}
   image_size: 256
+  max_images_per_patient: 2   # keeps a few patients with many follow-ups from dominating
 
 noise:
   primary: medium             # main experiment for M2

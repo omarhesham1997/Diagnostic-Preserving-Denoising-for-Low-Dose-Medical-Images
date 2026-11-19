@@ -33,6 +33,17 @@ On Windows and Linux, `pyproject.toml` installs PyTorch from the official CUDA 1
 uv export --no-hashes --emit-index-url --no-emit-project -o requirements.txt
 ```
 
+## Data pipeline
+
+```powershell
+uv run python scripts/download_data.py      # Kaggle NIH random 5% sample -> data/raw
+uv run python scripts/make_split.py         # 3,000 images, patient-level 2000/400/600 split -> splits/
+uv run python scripts/preprocess.py         # 256x256 grayscale arrays -> data/processed/
+uv run python scripts/make_noisy_sets.py    # fixed noisy val/test sets for low/medium/high
+```
+
+Each step prints checksums; re-running a step gives identical checksums.
+
 ## Repository layout
 
 ```
